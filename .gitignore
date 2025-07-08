@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# Node
+node_modules/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Virtual Environments
+venv/
+env/
+
+# Logs
+*.log
+
+# CSV files (optional)
+*.csv
+
+# Ignore images (optional)
+*.png

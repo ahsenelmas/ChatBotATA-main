@@ -1,0 +1,62 @@
+<!-- index.html -->
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ATA University Chatbot</title>
+    <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+    <!-- 💬 CHAT TOGGLE BUTTON (Always visible) -->
+    <div id="chat-toggle" onclick="toggleChatBox()">
+        <img src="bear-mascot1.png" alt="Open Chat" />
+    </div>
+
+
+    <!-- 💬 CHAT PANEL (Hidden by default) -->
+    <div class="chat-wrapper hidden" id="chatWrapper">
+        <div class="chat-header">
+            <img src="bear-mascot.png" alt="ATA Mascot" class="logo" />
+            <h1>ATA University Assistant</h1>
+            <select id="languageSelect" class="language-select">
+                <option value="en">EN</option>
+                <option value="tr">TR</option>
+                <option value="pl">PL</option>
+            </select>
+            <button id="exitButton" class="exit-button hidden">Exit</button>
+            <span id="announcementIcon" class="announcement-icon">📢</span>
+        </div>
+
+        <div class="announcement-list hidden" id="announcementList">
+            <h2>📋 Announcements</h2>
+            <ul id="announcements"></ul>
+        </div>
+
+        <div class="chat-box" id="chatBox">
+            <div class="bot-message">Hi! I’m your ATAssistant. How can I help you today?</div>
+        </div>
+
+        <div class="chat-input">
+            <input type="text" id="userInput" placeholder="Type your question..." />
+            <button id="sendButton">Send</button>
+        </div>
+    </div>
+
+    <!-- 📢 Announcement Popup -->
+    <div class="popup hidden" id="announcementPopup">
+        <div class="popup-content">
+            <span class="close-popup" id="closePopup">&times;</span>
+            <h3>📣 New Announcement</h3>
+            <input type="text" id="popupTitle" placeholder="Title" />
+            <textarea id="popupContent" placeholder="Message..."></textarea>
+            <button id="popupPublish">Publish</button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
