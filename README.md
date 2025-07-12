@@ -83,16 +83,18 @@ python app.py
 ```
 <img width="1919" height="927" alt="image" src="https://github.com/user-attachments/assets/2de04caf-1984-4fb8-92f1-89653f21c479" />
 
-🌱 Environment Variables
+# 🌱 Environment Variables
+
 To configure the chatbot properly, you need to set up environment variables.
 You can create a .env file based on the provided .env.sample file:
 
+# 📁 Copy sample environment file to start your own .env
 cp .env.sample .env
 
 Make sure to update the values inside .env according to your setup if needed.
 
 
-🌐 Frontend Usage
+# 🌐 Frontend Usage
 Once the backend server is running, you can interact with the chatbot through the frontend.
 
 Steps:
