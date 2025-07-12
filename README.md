@@ -83,4 +83,22 @@ python app.py
 ```
 <img width="1919" height="927" alt="image" src="https://github.com/user-attachments/assets/2de04caf-1984-4fb8-92f1-89653f21c479" />
 
+🌱 Environment Variables
+To configure the chatbot properly, you need to set up environment variables.
+You can create a .env file based on the provided .env.sample file:
+cp .env.sample .env
+Make sure to update the values inside .env according to your setup if needed.
+
+🌐 Frontend Usage
+Once the backend server is running, you can interact with the chatbot through the frontend.
+
+Steps:
+Navigate to the frontend/ folder:
+cd ../frontend
+Open the index.html file in any modern web browser (e.g., Chrome, Firefox, Edge).
+
+💡 No additional server is needed for the frontend — it runs locally in the browser and communicates with the Flask backend via API calls.
+
+
+
 
