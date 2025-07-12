@@ -88,6 +88,7 @@ python app.py
 To configure the chatbot properly, you need to set up environment variables.
 You can create a .env file based on the provided .env.sample file:
 
+📁 Create .env file from the sample
 cp .env.sample .env
 
 Make sure to update the values inside .env according to your setup if needed.
@@ -98,8 +99,7 @@ Once the backend server is running, you can interact with the chatbot through th
 
 Steps:
 
-Navigate to the frontend/ folder:
-
+📁 Navigate to the frontend folder
 cd frontend
 
 Open the index.html file in any modern web browser (e.g., Chrome, Firefox, Edge).
