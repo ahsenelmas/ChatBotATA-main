@@ -15,9 +15,3 @@ env/
 
 # Logs
 *.log
-
-# CSV files (optional)
-*.csv
-
-# Ignore images (optional)
-*.png
