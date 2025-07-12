@@ -1,6 +1,5 @@
 import csv
 
-# CSV dosyasındaki sorulara göre cevap döndür
 def get_manual_answer(question):
     question = question.strip().lower()
     try:
@@ -14,7 +13,6 @@ def get_manual_answer(question):
 
     return None
 
-# Kullanıcıdan gelen özel komutlara göre mod/öğrenci bilgisi döndür
 def get_mode_or_student_response(question):
     q = question.strip().lower()
 
