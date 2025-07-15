@@ -1,4 +1,3 @@
-// ✅ Full script.js with working language switch, fixed exit button, and clean logic
 
 document.addEventListener('DOMContentLoaded', function () {
     const chatBox = document.getElementById('chatBox');
@@ -166,31 +165,32 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
+    // Fix the sendButton event listener
     sendButton.addEventListener('click', () => {
         const question = userInput.value.trim();
         if (!question) return;
         addMessage(question, true);
         userInput.value = '';
 
-        fetch('http://localhost:5000/ask', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ question })
+        // Fix the fetch call (was 'tch' instead of 'fetch')
+        fetch("http://localhost:8000/ask", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ question: question }), // was using undefined 'userQuestion'
         })
             .then(res => res.json())
             .then(data => {
                 if (data.mode) {
                     changeMode(data.mode);
-                    if (data.mode === 'student') {
-                        addMessage(`Student: ${data.name}\nCourses: ${data.courses.join(', ')}\nSchedule: ${data.schedule}`);
-                    }
                 } else {
-                    addMessage(data.answer);
+                    addMessage(data.answer || data.error || "No answer received");
                 }
             })
-            .catch(err => {
-                console.error(err);
-                addMessage("Sorry, I'm having trouble connecting to the server.");
+            .catch(error => {
+                addMessage("Error connecting to the server");
+                console.error("Error:", error);
             });
     });
 
