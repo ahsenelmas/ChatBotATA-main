@@ -1,6 +1,5 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-import csv
 import requests
 from knowledge_base import get_manual_answer, get_mode_or_student_response
 
@@ -21,24 +20,34 @@ def send_to_webhook(question, answer):
     except requests.exceptions.RequestException as e:
         print("❌ Webhook error:", e)
 
+@app.route('/')
+def index():
+    return "Flask app is running!"
+
+
 @app.route('/ask', methods=['POST'])
 def ask():
-    data_in = request.json
-    question = data_in.get('question', '').strip().lower()
+    try:
+        data_in = request.json
+        question = data_in.get('question', '').strip().lower()
 
-    mode_or_student = get_mode_or_student_response(question)
-    if mode_or_student:
-        send_to_webhook(question, mode_or_student.get("answer", ""))
-        return jsonify(mode_or_student)
+        mode_or_student = get_mode_or_student_response(question)
+        if mode_or_student:
+            send_to_webhook(question, mode_or_student.get("answer", ""))
+            return jsonify(mode_or_student)
 
-    answer = get_manual_answer(question)
-    if answer:
-        send_to_webhook(question, answer.get("answer", ""))
-        return jsonify(answer)
+        answer = get_manual_answer(question)
+        if answer:
+            send_to_webhook(question, answer.get("answer", ""))
+            return jsonify(answer)
 
-    fallback = {"answer": "Sorry, I don't know the answer to that question."}
-    send_to_webhook(question, fallback["answer"])
-    return jsonify(fallback)
+        fallback = {"answer": "Sorry, I don't know the answer to that question."}
+        send_to_webhook(question, fallback["answer"])
+        return jsonify(fallback)
+
+    except Exception as e:
+        print("❌ Error in /ask:", e)
+        return jsonify({"answer": "Sorry, I'm having trouble connecting to the server."}), 500
 
 if __name__ == '__main__':
-    app.run(debug=True ,port=8000)
+    app.run(host='0.0.0.0', port=8000, debug=True)
