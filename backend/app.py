@@ -8,46 +8,49 @@ CORS(app)
 
 WEBHOOK_URL = "https://tufan34568.app.n8n.cloud/webhook/001e62bf-e1e7-4476-8b83-4d4774940d77/chat"
 
-def send_to_webhook(question, answer):
+def send_to_webhook(question, response_dict):
     payload = {
         "question": question,
-        "answer": answer
+        "response": response_dict
     }
     try:
-        response = requests.post(WEBHOOK_URL, json=payload)
-        response.raise_for_status()
-        print("✅ Sent to webhook:", response.status_code)
+        res = requests.post(WEBHOOK_URL, json=payload)
+        res.raise_for_status()
+        print("✅ Sent to webhook:", res.status_code)
     except requests.exceptions.RequestException as e:
         print("❌ Webhook error:", e)
 
-@app.route('/')
+@app.route("/")
 def index():
     return "Flask app is running!"
 
-
-@app.route('/ask', methods=['POST'])
+@app.route("/ask", methods=["POST"])
 def ask():
     try:
         data_in = request.json
-        question = data_in.get('question', '').strip().lower()
+        question = data_in.get("question", "").strip().lower()
 
         mode_or_student = get_mode_or_student_response(question)
         if mode_or_student:
-            send_to_webhook(question, mode_or_student.get("answer", ""))
+            # Wrap mode-only response with an answer message
+            if "mode" in mode_or_student and "answer" not in mode_or_student:
+                mode_or_student["answer"] = f"You are now in {mode_or_student['mode']} mode."
+
+            send_to_webhook(question, mode_or_student)
             return jsonify(mode_or_student)
 
         answer = get_manual_answer(question)
         if answer:
-            send_to_webhook(question, answer.get("answer", ""))
+            send_to_webhook(question, answer)
             return jsonify(answer)
 
         fallback = {"answer": "Sorry, I don't know the answer to that question."}
-        send_to_webhook(question, fallback["answer"])
+        send_to_webhook(question, fallback)
         return jsonify(fallback)
 
     except Exception as e:
         print("❌ Error in /ask:", e)
         return jsonify({"answer": "Sorry, I'm having trouble connecting to the server."}), 500
 
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8000, debug=True)
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=8000, debug=True)

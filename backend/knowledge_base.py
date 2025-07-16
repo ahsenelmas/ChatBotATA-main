@@ -7,7 +7,6 @@ def get_manual_answer(question):
         "when is the exam?": "The exam is scheduled for next Friday at 10 AM.",
         "what are the office hours?": "Office hours are Monday–Friday, 2 PM–4 PM.",
         "how can i contact support?": "You can email support at support@example.com."
-        # Add more Q&A pairs here as needed
     }
 
     answer = static_answers.get(question)
