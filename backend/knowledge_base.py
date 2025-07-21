@@ -8,7 +8,6 @@ def get_manual_answer(question):
     }
     return {"answer": static_answers.get(question)} if question in static_answers else None
 
-
 def get_mode_or_student_response(question):
     q = question.strip().lower()
 
