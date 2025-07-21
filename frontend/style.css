@@ -4,6 +4,7 @@
     --bg: #fffdf8;
     --bot-bg: #fff3e0;
     --user-bg: #ff9800;
+    --input-bg: #f9f9f9;
 
     --professor-color: #1565c0;
     --dean-color: #fbc02d;
@@ -18,6 +19,7 @@ body {
     margin: 0;
     padding: 0;
     overflow: auto;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
 body {

@@ -1,4 +1,3 @@
-
 document.addEventListener('DOMContentLoaded', function () {
     const chatBox = document.getElementById('chatBox');
     const userInput = document.getElementById('userInput');
@@ -66,7 +65,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     };
 
-    const t = (key) => translations[lang][key] || key;
+    const t = key => translations[lang][key] || key;
 
     function updateLanguageUI() {
         userInput.placeholder = t('sendPlaceholder');
@@ -74,17 +73,12 @@ document.addEventListener('DOMContentLoaded', function () {
         const quickLinks = document.createElement('div');
         quickLinks.className = 'quick-links';
         quickLinks.innerHTML = `
-          <button onclick="window.open('https://uczelnia.akademiata.pl/student/e-learning/')">${t('eLearning')}</button>
-          <button onclick="window.open('https://uczelnia.akademiata.pl/student/wirtualne-platformy/')">${t('vPlatform')}</button>
+            <button onclick="window.open('https://uczelnia.akademiata.pl/student/e-learning/')">${t('eLearning')}</button>
+            <button onclick="window.open('https://uczelnia.akademiata.pl/student/wirtualne-platformy/')">${t('vPlatform')}</button>
         `;
         chatBox.appendChild(quickLinks);
         addMessage(t('welcome'));
     }
-
-    languageSelect.addEventListener('change', (e) => {
-        lang = e.target.value;
-        updateLanguageUI();
-    });
 
     function addMessage(text, isUser = false) {
         const messageDiv = document.createElement('div');
@@ -108,8 +102,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function showModeOverlay(text) {
         const overlay = document.createElement('div');
-        overlay.textContent = text;
         overlay.className = 'mode-overlay';
+        overlay.textContent = text;
         document.body.appendChild(overlay);
         setTimeout(() => overlay.classList.add('show'), 50);
         setTimeout(() => overlay.classList.remove('show'), 2000);
@@ -120,82 +114,87 @@ document.addEventListener('DOMContentLoaded', function () {
         currentMode = mode;
         const header = document.querySelector('.chat-header');
 
-        if (mode === 'professor') {
-            chatContainer.style.backgroundColor = "#e3f2fd";
-            header.style.backgroundColor = '#1565c0';
-            document.documentElement.style.setProperty('--primary', '#1565c0');
-            document.documentElement.style.setProperty('--primary-dark', '#0d47a1');
-            document.documentElement.style.setProperty('--user-bg', '#42a5f5');
-            showToast(t("toastProfessor"));
-            showModeOverlay(t("overlayProfessor"));
-            announcementPopup.classList.remove('hidden');
-            exitButton.classList.remove('hidden');
-        } else if (mode === 'dean') {
-            chatContainer.style.backgroundColor = "#fffde7";
-            header.style.backgroundColor = '#fbc02d';
-            document.documentElement.style.setProperty('--primary', '#fbc02d');
-            document.documentElement.style.setProperty('--primary-dark', '#f9a825');
-            document.documentElement.style.setProperty('--user-bg', '#fff176');
-            showToast(t("toastDean"));
-            showModeOverlay(t("overlayDean"));
-            announcementPopup.classList.remove('hidden');
-            exitButton.classList.remove('hidden');
-        } else if (mode === 'student') {
-            chatContainer.style.backgroundColor = "#e8f5e9";
-            header.style.backgroundColor = '#43a047';
-            document.documentElement.style.setProperty('--primary', '#43a047');
-            document.documentElement.style.setProperty('--primary-dark', '#2e7d32');
-            document.documentElement.style.setProperty('--user-bg', '#81c784');
-            showToast(t("toastStudent"));
-            showModeOverlay(t("overlayStudent"));
-            announcementPopup.classList.add('hidden');
+        const themes = {
+            professor: {
+                bg: "#e3f2fd",
+                header: "#1565c0",
+                userBg: "#42a5f5",
+                toast: "toastProfessor",
+                overlay: "overlayProfessor"
+            },
+            dean: {
+                bg: "#fffde7",
+                header: "#fbc02d",
+                userBg: "#fff176",
+                toast: "toastDean",
+                overlay: "overlayDean"
+            },
+            student: {
+                bg: "#e8f5e9",
+                header: "#43a047",
+                userBg: "#81c784",
+                toast: "toastStudent",
+                overlay: "overlayStudent"
+            },
+            default: {
+                bg: "#fffdf8",
+                header: "#ff6f00",
+                userBg: "#ff9800"
+            }
+        };
+
+        const theme = themes[mode] || themes.default;
+
+        chatContainer.style.backgroundColor = theme.bg;
+        header.style.backgroundColor = theme.header;
+        document.documentElement.style.setProperty('--primary', theme.header);
+        document.documentElement.style.setProperty('--user-bg', theme.userBg);
+
+        if (theme.toast) showToast(t(theme.toast));
+        if (theme.overlay) showModeOverlay(t(theme.overlay));
+
+        if (mode === "student") {
             addMessage(t("schedule"));
             addMessage(t("motivation"));
-            exitButton.classList.remove('hidden');
-        } else {
-            // Reset to main (orange) mode
-            chatContainer.style.backgroundColor = "white";
-            header.style.backgroundColor = '#ff6f00';
-            document.documentElement.style.setProperty('--primary', '#ff6f00');
-            document.documentElement.style.setProperty('--primary-dark', '#e65100');
-            document.documentElement.style.setProperty('--user-bg', '#ff9800');
-            exitButton.classList.add('hidden');
-            announcementPopup.classList.add('hidden');
-            updateLanguageUI();
         }
+
+        announcementPopup.classList.toggle('hidden', mode !== "professor" && mode !== "dean");
+        exitButton.classList.toggle('hidden', mode === "");
     }
 
-    // Fix the sendButton event listener
     sendButton.addEventListener('click', () => {
         const question = userInput.value.trim();
         if (!question) return;
         addMessage(question, true);
         userInput.value = '';
 
-        // Fix the fetch call (was 'tch' instead of 'fetch')
         fetch("http://localhost:8000/ask", {
             method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ question: question }), // was using undefined 'userQuestion'
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ question })
         })
             .then(res => res.json())
             .then(data => {
                 if (data.mode) {
                     changeMode(data.mode);
+                    if (data.message) addMessage(data.message);
                 } else {
-                    addMessage(data.answer || data.error || "No answer received");
+                    addMessage(data.answer || data.error || "No response");
                 }
             })
-            .catch(error => {
-                addMessage("Error connecting to the server");
-                console.error("Error:", error);
+            .catch(err => {
+                console.error("Fetch error:", err);
+                addMessage("⚠️ Error reaching the server.");
             });
     });
 
     userInput.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') sendButton.click();
+    });
+
+    languageSelect.addEventListener('change', (e) => {
+        lang = e.target.value;
+        updateLanguageUI();
     });
 
     announcementIcon.addEventListener('click', () => {
@@ -222,16 +221,12 @@ document.addEventListener('DOMContentLoaded', function () {
         announcementPopup.classList.add('hidden');
     });
 
-    exitButton.addEventListener('click', () => {
-        changeMode('');
-    });
+    exitButton.addEventListener('click', () => changeMode(""));
 
-    // Chat toggle button
-    window.toggleChatBox = function () {
+    window.toggleChatBox = () => {
         const chatWrapper = document.getElementById("chatWrapper");
         chatWrapper?.classList.toggle("hidden");
     };
 
-    // Initial render
     updateLanguageUI();
 });

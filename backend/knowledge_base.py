@@ -1,6 +1,4 @@
 def get_manual_answer(question):
-    question = question.strip().lower()
-
     static_answers = {
         "what is ai?": "AI stands for Artificial Intelligence.",
         "who is the dean?": "The dean is Dr. John Smith.",
@@ -8,11 +6,7 @@ def get_manual_answer(question):
         "what are the office hours?": "Office hours are Monday–Friday, 2 PM–4 PM.",
         "how can i contact support?": "You can email support at support@example.com."
     }
-
-    answer = static_answers.get(question)
-    if answer:
-        return {"answer": answer}
-    return None
+    return {"answer": static_answers.get(question)} if question in static_answers else None
 
 
 def get_mode_or_student_response(question):
@@ -21,20 +15,21 @@ def get_mode_or_student_response(question):
     if q == "professor123":
         return {"mode": "professor"}
 
-    elif q == "dean321":
+    if q == "dean321":
         return {"mode": "dean"}
 
-    elif "|" in q:
-        parts = q.split("|")
-        if len(parts) == 2:
-            index = parts[0].strip()
-            birthday = parts[1].strip().lower()
-            if index == "12345" and birthday == "may":
-                return {
-                    "mode": "student",
-                    "name": "Alice Smith",
-                    "courses": ["Math", "Physics", "AI"],
-                    "schedule": "Mon-Wed-Fri 10:00–13:00"
-                }
+    if "|" in q:
+        index, birthday = map(str.strip, q.split("|"))
+        valid_students = {
+            "12345": "may 15",
+            "67890": "june 10"
+        }
+        if index in valid_students and valid_students[index] == birthday.lower():
+            return {
+                "student_id": index,
+                "verified": True,
+                "mode": "student",
+                "message": "Welcome, student!"
+            }
 
     return None

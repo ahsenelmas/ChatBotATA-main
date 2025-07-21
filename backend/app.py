@@ -1,56 +1,48 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-import requests
+import requests, os
+from dotenv import load_dotenv
 from knowledge_base import get_manual_answer, get_mode_or_student_response
 
+load_dotenv()
 app = Flask(__name__)
 CORS(app)
 
-WEBHOOK_URL = "https://tufan34568.app.n8n.cloud/webhook/001e62bf-e1e7-4476-8b83-4d4774940d77/chat"
+WEBHOOK_URL = os.getenv("WEBHOOK_URL")
 
-def send_to_webhook(question, response_dict):
-    payload = {
-        "question": question,
-        "response": response_dict
-    }
+def send_to_webhook(question, response):
+    if not WEBHOOK_URL:
+        return
     try:
-        res = requests.post(WEBHOOK_URL, json=payload)
-        res.raise_for_status()
-        print("✅ Sent to webhook:", res.status_code)
-    except requests.exceptions.RequestException as e:
-        print("❌ Webhook error:", e)
+        requests.post(WEBHOOK_URL, json={"question": question, "response": response}, timeout=3)
+    except requests.RequestException as e:
+        print("Webhook error:", e)
 
 @app.route("/")
 def index():
-    return "Flask app is running!"
+    return "✅ ATA Chatbot backend is running"
 
 @app.route("/ask", methods=["POST"])
 def ask():
-    try:
-        data_in = request.json
-        question = data_in.get("question", "").strip().lower()
+    data = request.get_json()
+    question = data.get("question", "").strip().lower()
+    if not question:
+        return jsonify({"error": "Missing question"}), 400
 
-        mode_or_student = get_mode_or_student_response(question)
-        if mode_or_student:
-            # Wrap mode-only response with an answer message
-            if "mode" in mode_or_student and "answer" not in mode_or_student:
-                mode_or_student["answer"] = f"You are now in {mode_or_student['mode']} mode."
+    mode_response = get_mode_or_student_response(question)
+    if mode_response:
+        send_to_webhook(question, mode_response)
+        return jsonify(mode_response)
 
-            send_to_webhook(question, mode_or_student)
-            return jsonify(mode_or_student)
+    manual = get_manual_answer(question)
+    if manual:
+        send_to_webhook(question, manual)
+        return jsonify(manual)
 
-        answer = get_manual_answer(question)
-        if answer:
-            send_to_webhook(question, answer)
-            return jsonify(answer)
-
-        fallback = {"answer": "Sorry, I don't know the answer to that question."}
-        send_to_webhook(question, fallback)
-        return jsonify(fallback)
-
-    except Exception as e:
-        print("❌ Error in /ask:", e)
-        return jsonify({"answer": "Sorry, I'm having trouble connecting to the server."}), 500
+    unknown = {"answer": "❓ I didn’t understand that question."}
+    send_to_webhook(question, unknown)
+    return jsonify(unknown)
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8000, debug=True)
+    port = int(os.getenv("PORT", 5000))
+    app.run(debug=(os.getenv("FLASK_ENV") == "development"), port=port)
