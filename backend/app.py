@@ -12,6 +12,11 @@ CORS(app)
 
 WEBHOOK_URL = os.getenv("WEBHOOK_URL")
 
+
+@app.route("/hello", methods=["GET"])
+def hello():
+    return "Hello World"
+
 @app.route("/ask", methods=["POST"])
 def ask():
     try:
