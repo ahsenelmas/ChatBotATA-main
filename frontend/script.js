@@ -165,27 +165,33 @@ document.addEventListener('DOMContentLoaded', function () {
     sendButton.addEventListener('click', () => {
         const question = userInput.value.trim();
         if (!question) return;
+
         addMessage(question, true);
         userInput.value = '';
 
-        fetch("http://localhost:5000/ask", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ question })
+        fetch('http://localhost:5000/ask', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ question: question }),  // <- you had wrong variable: userMessage
         })
-            .then(res => res.json())
+            .then(response => response.json())
             .then(data => {
-                if (data.mode) {
-                    changeMode(data.mode);
-                    if (data.message) addMessage(data.message);
+                let reply;
+
+                // Safely handle object or string
+                if (typeof data.answer === "object" && data.answer !== null) {
+                    reply = data.answer.content || JSON.stringify(data.answer, null, 2);
                 } else {
-                    addMessage(data.answer || data.error || "No response");
+                    reply = data.answer || JSON.stringify(data, null, 2);
                 }
+
+                addMessage(reply);
             })
-            .catch(err => {
-                console.error("Fetch error:", err);
-                addMessage("⚠️ Error reaching the server.");
+            .catch(error => {
+                console.error('Error:', error);
+                addMessage("⚠️ Server error. Please try again later.");
             });
+
     });
 
     userInput.addEventListener('keypress', (e) => {
