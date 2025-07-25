@@ -13,5 +13,7 @@ Thumbs.db
 venv/
 env/
 
+.env
+
 # Logs
 *.log
