@@ -1,74 +1,139 @@
+import os
+import uuid
+import logging
+from pathlib import Path
+
+import requests
+from requests.adapters import HTTPAdapter, Retry
+from dotenv import load_dotenv, find_dotenv
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-import requests
-import os
-from dotenv import load_dotenv
+
 from knowledge_base import get_manual_answer, get_mode_or_student_response
 
-load_dotenv()
+# -----------------------------------------------------------------------------
+# Environment & logging
+# -----------------------------------------------------------------------------
+# Load .env no matter where the process is started from
+dotenv_path = find_dotenv() or Path(__file__).with_name(".env")
+load_dotenv(dotenv_path, override=True)
 
-app = Flask(__name__)
-CORS(app)
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+)
+log = logging.getLogger("app")
 
 WEBHOOK_URL = os.getenv("WEBHOOK_URL")
+PORT = int(os.getenv("PORT", 5000))
+FLASK_ENV = os.getenv("FLASK_ENV", "development")
+
+log.info("Loaded .env from: %s", dotenv_path)
+log.info("WEBHOOK_URL: %s", WEBHOOK_URL)
+
+# Optional fallback to avoid hard crashes if env is missing
+DEFAULT_WEBHOOK = None  # put a default URL here if you want
+if not WEBHOOK_URL and DEFAULT_WEBHOOK:
+    WEBHOOK_URL = DEFAULT_WEBHOOK
+    log.warning("WEBHOOK_URL was missing. Falling back to DEFAULT_WEBHOOK: %s", WEBHOOK_URL)
+
+# -----------------------------------------------------------------------------
+# HTTP session with retries (for n8n webhook)
+# -----------------------------------------------------------------------------
+session = requests.Session()
+retries = Retry(
+    total=3,
+    backoff_factor=0.4,
+    status_forcelist=(408, 429, 500, 502, 503, 504),
+    allowed_methods=frozenset(["POST", "GET"]),
+)
+adapter = HTTPAdapter(max_retries=retries)
+session.mount("http://", adapter)
+session.mount("https://", adapter)
+
+# -----------------------------------------------------------------------------
+# Flask
+# -----------------------------------------------------------------------------
+app = Flask(__name__)
+# In production lock this down: CORS(app, resources={r"/ask": {"origins": "https://your-frontend.com"}})
+CORS(app)
+
+
+def error(message: str, code: int):
+    return jsonify({"error": message}), code
 
 
 @app.route("/hello", methods=["GET"])
 def hello():
     return "Hello World"
 
+
+@app.route("/health", methods=["GET"])
+def health():
+    ok = bool(WEBHOOK_URL)
+    return jsonify({"status": "ok" if ok else "misconfigured", "webhook_url_present": ok}), (200 if ok else 500)
+
+
 @app.route("/ask", methods=["POST"])
 def ask():
     try:
-        data = request.get_json()
-        question = data.get("question", "").strip()
+        if not WEBHOOK_URL:
+            log.error("WEBHOOK_URL is not set.")
+            return error("Server misconfiguration", 500)
+
+        data = request.get_json(silent=True) or {}
+        question = (data.get("question") or "").strip()
+        session_id = data.get("sessionId") or str(uuid.uuid4())
+        lang = data.get("lang") or "en"
 
         if not question:
-            return jsonify({"error": "No question provided"}), 400
+            return error("No question provided", 400)
 
-        # 1. Check for mode input (professor, student, etc.)
+        # 1) Local mode checks (professor/dean/student)
         mode_data = get_mode_or_student_response(question)
         if mode_data:
+            # Keep same contract so the frontend can branch on 'mode'
+            mode_data.setdefault("sessionId", session_id)
             return jsonify(mode_data)
 
-        # 2. Check for manual/static responses
+        # 2) Manual/static answers
         manual_answer = get_manual_answer(question.lower())
         if manual_answer:
+            manual_answer.setdefault("sessionId", session_id)
             return jsonify(manual_answer)
 
-        # 3. Forward to n8n webhook
-        if not WEBHOOK_URL:
-            print("⚠️ ERROR: WEBHOOK_URL is not set.")
-            return jsonify({"error": "Server misconfiguration"}), 500
+        # 3) Forward to n8n webhook
+        payload = {"question": question, "sessionId": session_id, "lang": lang}
+        log.info("→ Forwarding to n8n (%s): %s", WEBHOOK_URL, payload)
 
-        res = requests.post(WEBHOOK_URL, json={"question": question}, timeout=10)
+        res = session.post(WEBHOOK_URL, json=payload, timeout=15)
 
+        # Attempt to parse JSON
         try:
             response_data = res.json()
         except Exception as json_err:
-            print("❌ Failed to parse JSON from webhook:", json_err)
-            print("Response text:", res.text)
-            return jsonify({"error": "Invalid response from webhook"}), 502
+            log.exception("Failed to parse JSON from webhook. Text: %s", res.text)
+            return error("Invalid response from webhook", 502)
 
-        # DEBUG: See what n8n returned
-        print("✅ Webhook response:", response_data)
+        log.info("← n8n responded (%s): %s", res.status_code, response_data)
 
         if res.status_code != 200:
-            print("❌ Webhook HTTP error:", res.status_code)
-            return jsonify({"error": "n8n webhook error"}), 502
+            return error("n8n webhook error", 502)
 
-        # 4. Check for expected 'answer' field
-        answer = response_data.get("answer")
-        if not answer:
-            return jsonify({"error": "No answer provided from webhook"}), 502
+        # Optionally attach sessionId back so the frontend can see/keep it (harmless)
+        if isinstance(response_data, dict):
+            response_data.setdefault("sessionId", session_id)
 
-        return jsonify({"answer": answer})
+        return jsonify(response_data)
 
+    except requests.RequestException as net_err:
+        log.exception("Network error while calling n8n")
+        return error("Upstream webhook network error", 502)
     except Exception as e:
-        print("🔥 Internal error:", e)
-        return jsonify({"error": "Internal server error"}), 500
+        log.exception("Internal error")
+        return error("Internal server error", 500)
 
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port, debug=True)
+    app.run(host="0.0.0.0", port=PORT, debug=(FLASK_ENV == "development"))

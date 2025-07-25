@@ -1,4 +1,23 @@
+// script.js
 document.addEventListener('DOMContentLoaded', function () {
+    // -----------------------------
+    // 🔐 Persistent session per tab
+    // -----------------------------
+    function getOrCreateSessionId() {
+        const KEY = 'chat_session_id';
+        let id = sessionStorage.getItem(KEY);
+        if (!id) {
+            id = (crypto && crypto.randomUUID) ? crypto.randomUUID() : Math.random().toString(36).slice(2);
+            sessionStorage.setItem(KEY, id);
+        }
+        return id;
+    }
+    const sessionId = getOrCreateSessionId();
+    console.log('Chat sessionId:', sessionId);
+
+    // -----------------------------
+    // DOM refs
+    // -----------------------------
     const chatBox = document.getElementById('chatBox');
     const userInput = document.getElementById('userInput');
     const sendButton = document.getElementById('sendButton');
@@ -14,6 +33,9 @@ document.addEventListener('DOMContentLoaded', function () {
     const languageSelect = document.getElementById('languageSelect');
     const exitButton = document.getElementById('exitButton');
 
+    // -----------------------------
+    // State
+    // -----------------------------
     let currentMode = "";
     let lang = 'en';
 
@@ -67,6 +89,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const t = key => translations[lang][key] || key;
 
+    // -----------------------------
+    // UI helpers
+    // -----------------------------
     function updateLanguageUI() {
         userInput.placeholder = t('sendPlaceholder');
         chatBox.innerHTML = '';
@@ -162,36 +187,55 @@ document.addEventListener('DOMContentLoaded', function () {
         exitButton.classList.toggle('hidden', mode === "");
     }
 
+    // -----------------------------
+    // Networking
+    // -----------------------------
+    async function sendQuestion(question) {
+        try {
+            const res = await fetch('http://localhost:5000/ask', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    question,
+                    sessionId,  // keep same across messages
+                    lang        // optional: your n8n can use this
+                }),
+            });
+
+            const data = await res.json();
+
+            // Handle mode responses coming from Flask "knowledge_base" checks
+            if (data.mode) {
+                changeMode(data.mode);
+                if (data.message) addMessage(data.message);
+                return;
+            }
+
+            // If normal answer from n8n
+            let reply;
+            if (typeof data.answer === "object" && data.answer !== null) {
+                reply = data.answer.content || JSON.stringify(data.answer, null, 2);
+            } else {
+                reply = data.answer || JSON.stringify(data, null, 2);
+            }
+
+            addMessage(reply);
+        } catch (error) {
+            console.error('Error:', error);
+            addMessage("⚠️ Server error. Please try again later.");
+        }
+    }
+
+    // -----------------------------
+    // Events
+    // -----------------------------
     sendButton.addEventListener('click', () => {
         const question = userInput.value.trim();
         if (!question) return;
 
         addMessage(question, true);
         userInput.value = '';
-
-        fetch('http://localhost:5000/ask', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ question: question }),  // <- you had wrong variable: userMessage
-        })
-            .then(response => response.json())
-            .then(data => {
-                let reply;
-
-                // Safely handle object or string
-                if (typeof data.answer === "object" && data.answer !== null) {
-                    reply = data.answer.content || JSON.stringify(data.answer, null, 2);
-                } else {
-                    reply = data.answer || JSON.stringify(data, null, 2);
-                }
-
-                addMessage(reply);
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                addMessage("⚠️ Server error. Please try again later.");
-            });
-
+        sendQuestion(question);
     });
 
     userInput.addEventListener('keypress', (e) => {
@@ -229,10 +273,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
     exitButton.addEventListener('click', () => changeMode(""));
 
+    // toggle button (global)
     window.toggleChatBox = () => {
         const chatWrapper = document.getElementById("chatWrapper");
         chatWrapper?.classList.toggle("hidden");
     };
 
+    // -----------------------------
+    // Init
+    // -----------------------------
     updateLanguageUI();
 });
